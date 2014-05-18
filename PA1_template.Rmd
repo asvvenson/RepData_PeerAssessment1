@@ -1,20 +1,54 @@
 # Reproducible Research: Peer Assessment 1
 
-
 ## Loading and preprocessing the data
-
-
-
+```{r echo=TRUE}
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip", destfile="repdata-data-activity.zip",method="curl")
+unzip("repdata-data-activity.zip")
+activity <- read.csv("activity.csv")
+library(reshape)
+library(reshape2)
+library(ggplot2)
+library(lattice)
+```
 ## What is mean total number of steps taken per day?
-
-
-
+```{r echo=TRUE}
+amdmelt <- melt(activity, id="date", measure.vars=c("steps","interval"))
+amdcast <- dcast(amdmelt, date~variable, sum)
+qplot(steps, data=amdcast, geom="histogram")
+mean(amdcast$steps, na.rm=TRUE)
+median(amdcast$steps, na.rm=TRUE)
+```
 ## What is the average daily activity pattern?
-
-
-
+```{r echo=TRUE}
+amdmelt2 <- melt(activity, id="interval", measure.vars="steps", na.rm=TRUE)
+amdcast2 <- dcast(amdmelt2, interval~variable, mean)
+adap <- ggplot(amdcast2, aes(interval,steps))
+adap + geom_line()
+maxamdcast2 <- amdcast2[amdcast2$steps==max(amdcast2$steps),]
+maxamdcast2$interval
+```
 ## Imputing missing values
-
-
+```{r echo=TRUE}
+activity[is.na(activity)] <- amdcast2$steps
+amdmelt3 <- melt(activity, id="date", measure.vars=c("steps","interval"))
+amdcast3 <- dcast(amdmelt3, date~variable, sum)
+qplot(steps, data=amdcast3, geom="histogram")
+mean(amdcast3$steps)
+median(amdcast3$steps)
+```
+###The mean hasn't changed, but the median has.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r echo=TRUE}
+activity$date <- as.Date(activity$date, format="%Y-%m-%d")
+activity$day <- format(activity$date, "%a")
+activity$weekend <- factor(ifelse(activity$day=="Sat"|activity$day=="Sun","weekend","weekday"))  
+airquality <- transform(airquality, Month=factor(Month))
+actagg <- aggregate(steps~interval+weekend, data=activity, mean)
+adap <- ggplot(actagg, aes(interval,steps))
+adap + geom_line() + facet_grid(weekend~.)
+```
+### Or, in line with the lattice plot shown in the assignment directions:
+```{r echo=TRUE}
+xyplot(steps ~ interval | weekend, data=actagg, type="l", layout=c(1,2))
+```
